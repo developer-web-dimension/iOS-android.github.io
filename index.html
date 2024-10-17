@@ -58,6 +58,11 @@
             align-items: center;
             flex-direction: column;
     }
+    #ios-message {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #333;
+}
     </style>
 </head>
 <body>
@@ -65,8 +70,8 @@
   <div id="intro-overlay">
     <img id="intro-image" src="WebD_texture.jpg" alt="WebD">
     <button id="start-button" onclick="getOS()">Start AR Experience</button>
+    <p id="ios-message"></p>
   </div>
-  <p id="iphone"></p>
 
 <script>
   function getOS() {
@@ -165,9 +170,10 @@ async function ARCoreXR() {
 
 
 // for Ios AR Experience
-async function ARkitXR() {
-      const osResult = document.getElementById('iphone');
-      osResult.textContent = "you are on ios";   
+function ARkitXR() {
+  const iosMessage = document.getElementById('ios-message');
+  iosMessage.textContent = "You are on iOS. This is a test message for iOS users.";
+  console.log("ARkitXR function called for iOS device");
 }
 
 </script>
