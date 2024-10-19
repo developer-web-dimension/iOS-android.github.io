@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>WebXR Cube AR</title>
 
   <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@2.0.3/build/webxr-polyfill.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
 
   <style>
     body {
@@ -42,10 +42,12 @@
       background-color: #3e8e41;
       box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
     }
+
     #intro-image {
       width: 60%;
       max-width: 600px;
     }
+
     #intro-overlay {
       position: absolute;
       top: 0;
@@ -81,7 +83,7 @@
     };
   }
 
-  // FOR Android AR Experience
+  // Android AR Experience
   async function ARCoreXR() {
     const canvas = document.createElement("canvas");
     document.body.appendChild(canvas);
@@ -94,7 +96,7 @@
 
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer: false,  // Turn off for better performance
       canvas: canvas,
       context: gl
     });
@@ -112,29 +114,31 @@
     const viewerSpace = await session.requestReferenceSpace('viewer');
     const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
+    // Simple reticle for faster detection
     let reticle = new THREE.Mesh(
-      new THREE.RingGeometry(0.05, 0.1, 32),
+      new THREE.RingGeometry(0.05, 0.1, 8),  // Reduced segment count for performance
       new THREE.MeshBasicMaterial({ color: 0x00ffff })
     );
     reticle.rotation.x = -Math.PI / 2;
     reticle.visible = false;
     scene.add(reticle);
 
-    const textureLoader = new THREE.TextureLoader();
-    const cubeTexture = textureLoader.load('WebD_texture.jpg');
-
+    // Lazy load the texture after detection
+    let cubeTexture = null;
     session.addEventListener("select", (event) => {
+      if (!cubeTexture) {
+        const textureLoader = new THREE.TextureLoader();
+        cubeTexture = textureLoader.load('WebD_texture.jpg'); 
+      }
       const cube = new THREE.Mesh(
         new THREE.BoxBufferGeometry(0.2, 0.2, 0.2),
-        new THREE.MeshBasicMaterial({map: cubeTexture})
+        new THREE.MeshBasicMaterial({ map: cubeTexture })
       );
       cube.position.copy(reticle.position);
       scene.add(cube);
     });
 
-    // Performance optimization: Use a lower resolution for hit testing
-    const hitTestResolution = 0.5; // Adjust this value to balance performance and accuracy
-
+    let frameCounter = 0;  // Frame counter for skipping
     const onXRFrame = (time, frame) => {
       session.requestAnimationFrame(onXRFrame);
 
@@ -144,13 +148,13 @@
       if (pose) {
         const view = pose.views[0];
         const viewport = session.renderState.baseLayer.getViewport(view);
-        renderer.setSize(viewport.width * hitTestResolution, viewport.height * hitTestResolution);
+        renderer.setSize(viewport.width, viewport.height);
         camera.matrix.fromArray(view.transform.matrix);
         camera.projectionMatrix.fromArray(view.projectionMatrix);
         camera.updateMatrixWorld(true);
 
-        // Perform hit testing less frequently
-        if (frame.predictedDisplayTime % 100 < 16) { // Adjust the frequency as needed
+        // Skip frames for hit-testing to optimize performance
+        if (frameCounter % 2 === 0) {
           const hitTestResults = frame.getHitTestResults(hitTestSource);
           if (hitTestResults.length > 0) {
             const hitPose = hitTestResults[0].getPose(referenceSpace);
@@ -159,18 +163,21 @@
             reticle.updateMatrixWorld(true);
           }
         }
+        frameCounter++;
 
         renderer.render(scene, camera);
       }
     };
-    
+
     session.requestAnimationFrame(onXRFrame);
   }
 
-  // For iOS AR Experience
+  // iOS AR Experience (placeholder function)
   function ARkitXR() {
-    // iOS-specific AR implementation (not provided in the original code)
+    console.log("iOS ARKit XR setup will go here.");
   }
+
 </script>
+
 </body>
 </html>
